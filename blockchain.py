@@ -4,17 +4,16 @@ from typing import List
 
 class BlockChain():
     class BlockNode():
+        # I think this class is quite unused, we're only using it for measuring the length.
         def __init__(self, block: Block, previous: 'BlockNode'):
             self.block: Block = block
             self.previous: 'BlockNode' = previous
-            self.length = 1 if previous == None else previous.len+1
+            self.length = 1 if previous == None else previous.length+1
             self.next = []
 
+        # We are not using this method
         def add_next(self, next_block_node: 'BlockNode'):
             self.next.append(next_block_node)
-        
-        def __len__(self) -> int:
-            return self.length
 
 
     def __init__(self, difficulty: bytes = b'\x00\x00'):
@@ -25,11 +24,11 @@ class BlockChain():
         self.latest_blocks.append(self.BlockNode(genesis, None))
         self.difficulty = difficulty
     
-    def validate(self, block: Block, header: bytes) -> bool:
+    def validate(self, block: Block, prev_header: bytes) -> bool:
         if not (block.validate(self.difficulty)):
             # This checks both validate_hash(difficulty) and validate_root()
             return False
-        if (block.get_header() == header):
+        if (block.prev_header == prev_header):
             return True
         return False
 
@@ -45,12 +44,15 @@ class BlockChain():
                 return normal_block
         return None
 
+    # Add searches for a header in the current list of nodes, and adds it to the relevant node
     def add(self, block: Block):
         # Can raise exception instead of returning true or false
-        found_node: 'BlockNode' = self.get_matching_header(block.get_header())
+        found_node: 'BlockNode' = self.get_matching_header(block.prev_header)
         if(found_node == None):
+            print("Failed to find node in list")
             return False
         if(self.validate(block, found_node.block.get_header())):
+            print("Validated new block, adding.")
             self.blocks.append(self.BlockNode(block, found_node))
             self.latest_blocks.append(self.BlockNode(block, found_node))
             try: 
@@ -63,11 +65,21 @@ class BlockChain():
     # def get_latest_header(self) -> bytes:
     #     return self.latest_blocks.get_header()
 
+    # Gets the longest chain.
+    def get_longest_chain(self) -> 'BlockNode':
+        longest = 0
+        # curr_longest = None
+        for blocknode in self.latest_blocks:
+            if (blocknode.length > longest):
+                longest = blocknode.length
+                curr_longest = blocknode
+        return curr_longest
+
     def mine_and_add(self, transactions: List[bytes]):
-        
-        pass
-        # newblock = Block.mine(self.get_latest_header(), transactions, self.difficulty)
-        # self.add(newblock)
+        longest = self.get_longest_chain()
+        newblock = Block.mine(longest.block.get_header(), transactions, self.difficulty)
+        print(newblock.get_header())
+        self.add(newblock)
 
     # def search_headers(self, header: bytes) -> int:
     #     for i, blocks in enumerate(self.blocks[::-1]):
@@ -79,10 +91,9 @@ if __name__ == "__main__":
     testblockchain = BlockChain()
     print(len(testblockchain.blocks))
     testblockchain.mine_and_add([b'1', b'2'])
-    print(len(testblockchain.blocks))
+    assert(len(testblockchain.blocks)==2)
     
-    # Not sure how to test this blockchain, still need to implement forking
-    # When forking, can we create another blockchain object? Or does the fork have to be contained in one blockchain object?
+
     # Do we have to implement UTXO transactions? If we do: 
     # What does it mean when you take input and output as transactions, do we pass in the function as an input? 
     # or is it the hash (/unique identifier) that we put in as input
