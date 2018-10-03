@@ -10,7 +10,7 @@ class BlockChain():
             self.previous: 'BlockNode' = previous
             self.length = 1 if previous == None else previous.length+1
             self.next = []
-
+        
         # We are not using this method
         def add_next(self, next_block_node: 'BlockNode'):
             self.next.append(next_block_node)
@@ -23,7 +23,9 @@ class BlockChain():
         self.latest_blocks = []
         self.latest_blocks.append(self.BlockNode(genesis, None))
         self.difficulty = difficulty
-    
+        self.orphans = []
+        # orphans is block not blocknode
+
     def validate(self, block: Block, prev_header: bytes) -> bool:
         if not (block.validate(self.difficulty)):
             # This checks both validate_hash(difficulty) and validate_root()
@@ -49,8 +51,12 @@ class BlockChain():
         # Can raise exception instead of returning true or false
         found_node: 'BlockNode' = self.get_matching_header(block.prev_header)
         if(found_node == None):
-            print("Failed to find node in list")
-            return False
+            # validating it again might be not necessary, just add it to the orphans
+            if not (block.validate(self.difficulty)):
+                return False
+            print("Failed to find node in list, adding it to orphans")
+            self.orphans.append(block)
+            return True
         if(self.validate(block, found_node.block.get_header())):
             print("Validated new block, adding.")
             self.blocks.append(self.BlockNode(block, found_node))
@@ -59,6 +65,10 @@ class BlockChain():
                 self.latest_blocks.remove(found_node)
             except ValueError:
                 print("Fork created.")
+            for i in self.orphans[:]:
+                if(i.prev_header == block.get_header()):
+                    self.add(i)
+                    self.orphans.remove(i)
             return True
         return False
     
@@ -88,11 +98,49 @@ class BlockChain():
     #     return -1
 
 if __name__ == "__main__":
+    testdifficulty = b'\x00\x0f'
     testblockchain = BlockChain()
-    print(len(testblockchain.blocks))
-    testblockchain.mine_and_add([b'1', b'2'])
-    assert(len(testblockchain.blocks)==2)
-    
+    testblockchain.difficulty = testdifficulty
+    assert(len(testblockchain.blocks) == 1)
+    assert(len(testblockchain.latest_blocks) == 1)
+
+    # This is a test block
+    testblock = Block.mine(testblockchain.latest_blocks[0].block.get_header(), [b'1', b'2'], testdifficulty)
+    print("Mined testblock")
+    testblock2 = Block.mine(testblock.get_header(), [b'33'], testdifficulty)
+    print("Mined testblock2")
+
+    # We continue mining,
+    testblockchain.mine_and_add([b'23'])
+    assert(len(testblockchain.blocks) == 2)
+    assert(len(testblockchain.latest_blocks) == 1)
+
+    # Then try adding an old mined block.
+    testblockchain.add(testblock)
+    assert(len(testblockchain.blocks) == 3)
+    assert(len(testblockchain.latest_blocks) == 2)
+
+    # We then add another old mined block.
+    testblockchain.add(testblock2)
+    assert(len(testblockchain.blocks) == 4)
+    assert(len(testblockchain.latest_blocks) == 2)
+    assert(testblockchain.get_longest_chain().length == 3)
+
+    testblock3 = Block.mine(testblock2.get_header(), [b'34'], testdifficulty)
+    print("Mined testblock3")
+    testblock4 = Block.mine(testblock3.get_header(), [b'asd'], testdifficulty)
+    print("Mined testblock4")
+    testblockchain.add(testblock4)
+    assert(len(testblockchain.orphans) == 1)
+    assert(len(testblockchain.blocks) == 4)
+    testblockchain.add(testblock3)
+    assert(len(testblockchain.orphans) == 0)
+    assert(len(testblockchain.blocks) == 6)
+    assert(len(testblockchain.latest_blocks) == 2)
+    assert(testblockchain.get_longest_chain().length == 5)
+
+    # Todo: add and keep for future validation (orphans)
+    # Validate time/timestamps
 
     # Do we have to implement UTXO transactions? If we do: 
     # What does it mean when you take input and output as transactions, do we pass in the function as an input? 
