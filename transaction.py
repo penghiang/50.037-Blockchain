@@ -8,6 +8,10 @@ vk = sk.get_verifying_key()
 sk2 = ecdsa.SigningKey.generate()
 vk2 = sk2.get_verifying_key()
 
+# Where/how do we check account balance?
+# We create a new wallet class maybe
+# Need to ensure that coins cannot be double-spent
+
 class Transaction():
     def __init__(self, sender, receiver, amount: int, comment: str ='', signature=None, sender_key=None):
         # Sender and receivers are public keys
@@ -52,14 +56,14 @@ class Transaction():
             signature = bytes.fromhex(data["signature"])
         )
         return newTransaction
-        
 
-    def sign(self, private_key) -> bool:
+    def sign(self, private_key):
+        # returns a signed transaction
         # Sign object with private key passed
         # Used in __init__ if private_key is provided during declaration of new Transaction
         json_string = self.to_json_no_sig()
-        signature = private_key.sign(json_string.encode('utf-8'))        
-        return signature
+        signed_transaction = private_key.sign(json_string.encode('utf-8'))        
+        return signed_transaction
         
     def validate(self) -> bool:
         # Validate transaction correctness.

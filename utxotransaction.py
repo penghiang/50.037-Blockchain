@@ -8,6 +8,9 @@ vk = sk.get_verifying_key()
 sk2 = ecdsa.SigningKey.generate()
 vk2 = sk2.get_verifying_key()
 
+# What is a UTXO model
+# Should I use the addr:balance model instead?
+
 class UTXO():
     def __init__(self, sender, receiver, amount: int, comment: str ='', signature=None, sender_key=None):
         # Sender and receivers are public keys

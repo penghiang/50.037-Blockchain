@@ -99,6 +99,18 @@ class Block():
         return newblock
 
     @staticmethod
+    def mine_once(prev_header: bytes, transactions: List[bytes], difficulty: bytes) -> 'Block':
+        transtree = MerkleTree(transactions)
+        timestamp = time.time()
+        nonce = random.randint(-2147483648, 2147483647)
+        # nonce = nonce & 0b11111111111111111111111111111111
+        # ensures a 32bit nonce
+        newblock = Block(prev_header, transtree.get_root() , timestamp, nonce, transtree)
+        if (Block.validate_hash(newblock, difficulty)):
+            return newblock
+        return None
+
+    @staticmethod
     def get_transaction_root(transactions: List[bytes]) -> bytes:
         temp = MerkleTree()
         for i in transactions:
@@ -106,6 +118,7 @@ class Block():
         return temp.get_root()
 
 if __name__ == "__main__":
+    testdifficulty = b'\x00\x00'
     t1 = b'adsf'
     t2 = b'jdjd'
     t3 = b'kdsoo'
@@ -114,15 +127,15 @@ if __name__ == "__main__":
     temproot = Block.get_transaction_root([t1,t2,t3])
 
     # tests if mine works, the header returned should start with 00
-    tempblock = Block.mine(b'prev_header', [t1,t2,t3], b'\x00\x00')
+    tempblock = Block.mine(b'prev_header', [t1,t2,t3], testdifficulty)
     print(tempblock.get_header())
 
     x = hashlib.sha512("288946".encode('utf-8')).digest()
-    print(x[:2] == b'\x00'*2)
-    y = Block.mine(b'123', [b"trans"], b'\x00\x00')
+    assert(x[:2] == testdifficulty)
+    y = Block.mine(b'123', [b"trans"], testdifficulty)
     print(y.nonce, y.timestamp, y.transaction_root, y.prev_header)
     # y should be validatable
-    assert(y.validate(b'\x00\x00'))
+    assert(y.validate(testdifficulty))
 
     # These 2 should be the same
     print(hashlib.sha256(y.to_json().encode('utf-8')).digest())

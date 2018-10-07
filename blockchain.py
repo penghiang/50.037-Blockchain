@@ -15,7 +15,6 @@ class BlockChain():
         def add_next(self, next_block_node: 'BlockNode'):
             self.next.append(next_block_node)
 
-
     def __init__(self, difficulty: bytes = b'\x00\x00'):
         genesis = Block.mine(b'0',[], b'\x00\x00')
         self.blocks = []
@@ -26,6 +25,10 @@ class BlockChain():
         self.orphans = []
         # orphans is block not blocknode
 
+    # Validates 3 things:
+    # The block's hash vs difficulty,
+    # The transaction root of the block is made of transactions,
+    # The previous header is as provided
     def validate(self, block: Block, prev_header: bytes) -> bool:
         if not (block.validate(self.difficulty)):
             # This checks both validate_hash(difficulty) and validate_root()
@@ -34,6 +37,11 @@ class BlockChain():
             return True
         return False
 
+    # This method is unused
+    def resolve(self) -> Block:
+        return self.get_longest_chain().block
+
+    # Searches for a matching header, returns the blocknode containing that header
     def get_matching_header(self, header: bytes) -> 'BlockNode':
         for end_block in reversed(self.latest_blocks):
             # end_blocks is a BlockNode
@@ -47,6 +55,8 @@ class BlockChain():
         return None
 
     # Add searches for a header in the current list of nodes, and adds it to the relevant node
+    # If no relevant header is found, adds to list of orphan nodes.
+    # After adding, check all orphan nodes and automatically run .add() on them.
     def add(self, block: Block):
         # Can raise exception instead of returning true or false
         found_node: 'BlockNode' = self.get_matching_header(block.prev_header)
@@ -85,6 +95,7 @@ class BlockChain():
                 curr_longest = blocknode
         return curr_longest
 
+    # Automatically finds the longest chain and mines.
     def mine_and_add(self, transactions: List[bytes]):
         longest = self.get_longest_chain()
         newblock = Block.mine(longest.block.get_header(), transactions, self.difficulty)
@@ -98,6 +109,7 @@ class BlockChain():
     #     return -1
 
 if __name__ == "__main__":
+    # Difficulty is reduced 
     testdifficulty = b'\x00\x0f'
     testblockchain = BlockChain()
     testblockchain.difficulty = testdifficulty
@@ -130,6 +142,8 @@ if __name__ == "__main__":
     print("Mined testblock3")
     testblock4 = Block.mine(testblock3.get_header(), [b'asd'], testdifficulty)
     print("Mined testblock4")
+    
+    # Testing orphans 
     testblockchain.add(testblock4)
     assert(len(testblockchain.orphans) == 1)
     assert(len(testblockchain.blocks) == 4)
@@ -138,8 +152,9 @@ if __name__ == "__main__":
     assert(len(testblockchain.blocks) == 6)
     assert(len(testblockchain.latest_blocks) == 2)
     assert(testblockchain.get_longest_chain().length == 5)
+    testblockchain.mine_and_add([b'21'])
+    assert(testblockchain.get_longest_chain().length == 6)
 
-    # Todo: add and keep for future validation (orphans)
     # Validate time/timestamps
 
     # Do we have to implement UTXO transactions? If we do: 
