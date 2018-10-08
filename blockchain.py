@@ -16,7 +16,8 @@ class BlockChain():
             self.next.append(next_block_node)
 
     def __init__(self, difficulty: bytes = b'\x00\x00'):
-        genesis = Block.mine(b'0',[b''], b'\x00\x00')
+        # genesis = Block.mine(b'0',[b''], b'\x00\x00')
+        genesis = Block(b'0', b'0', 0.0, 151766)
         self.blocks = []
         self.blocks.append(self.BlockNode(genesis, None))
         self.latest_blocks = []
@@ -102,11 +103,11 @@ class BlockChain():
         print(newblock.get_header())
         self.add(newblock)
 
-    # def search_headers(self, header: bytes) -> int:
-    #     for i, blocks in enumerate(self.blocks[::-1]):
-    #         if(header == blocks.get_header()):
-    #             return i
-    #     return -1
+    # This copy doesn't copy deep enough, but a deep copy has to go pretty deep
+    def get_copy(self) -> 'BlockChain':
+        new_chain = BlockChain()
+        new_chain.__dict__.update(self.__dict__)
+        return new_chain
 
 if __name__ == "__main__":
     # Difficulty is reduced 
@@ -168,5 +169,6 @@ if __name__ == "__main__":
     # How do we raise the difficulty? through the nakamoto consensus? (everybody propagates an opinion?)
     # To test the miner, do we need to come up with a network of miners? (to broadcast newly mined blocks)
     # How do we send transactions around? Do we just send transactions to all miners?
-    # Then hope all miners will add them in when they mine the next block?v 
+    # Then hope all miners will add them in when they mine the next block?
+    
     

@@ -3,11 +3,14 @@ from block import Block
 from wallet import Wallet
 from transaction import Transaction
 from typing import List
-import ecdsa
+# import ecdsa
 
 class Miner():
-    def __init__(self):
+    def __init__(self, blockchain: BlockChain=None):
         self.blockchain = BlockChain()
+        if(blockchain != None):
+            # This refers to the same blockchain object, but we just want a copy of it. 
+            self.blockchain = blockchain
         self.transactions = []
         self.wallet = Wallet()
         initial_transaction = Transaction(b'', self.wallet.get_public_key(), 100, "first transaction", signature=b'')
@@ -24,9 +27,13 @@ class Miner():
         # Need to implement nakamoto consensus
         # Need to query for parents if too many orphans
         # Need to implement resolving other miner's longer blockchains (miner broadcasts block)
+        # Good to make custom exceptions for failed verifications and the likes
+
+        # Miners have to send through the network:-
+        # transactions, blocks, difficulty raises, requests for orphans, 
     
 
-    def raise_difficulty(self, difficulty: bytes):
+    def change_difficulty(self, difficulty: bytes):
         self.blockchain.difficulty = difficulty
 
     
@@ -65,7 +72,7 @@ class Miner():
                 return True
             else:
                 raise ValueError("Failed to validate block")
-        raise ValueError("failed to verify transactions")
+        # raise ValueError("failed to verify transactions")
         return False
 
     # Broadcasts block to other miners
@@ -76,12 +83,16 @@ class Miner():
 if __name__ == '__main__':
     miner1 = Miner()
     miner2 = Miner()
+    print(len(miner1.blockchain.blocks))
     first_transaction = Transaction(b'', miner2.wallet.get_public_key(), 100, "first transaction", signature=b'')
     testtransaction = Transaction(miner2.wallet.get_public_key(),miner1.wallet.get_public_key(),1, sender_key=miner2.wallet.get_private_key())
     
     testblock = Block.mine(miner1.blockchain.latest_blocks[-1].block.get_header(),[first_transaction,testtransaction], b'\x00\x00')
     assert(miner1.receive_block(testblock))
+    miner2.receive_block(testblock)
+
     print(len(miner1.blockchain.blocks))
+    print(len(miner2.blockchain.blocks))
         
     
     

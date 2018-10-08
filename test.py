@@ -8,3 +8,13 @@
 # Root -> Transaction set, hashed in the merkle tree.
 # To validate block, we have to compute prev and root and nonce and hash it again.
 # First block is genesis block, it's hardcoded
+
+from block import Block
+gen = Block(b'0', b'0', 0.0, 0)
+while not (Block.validate_hash(gen, b'\x00\x00')):
+    gen.nonce += 1
+
+print(gen.nonce)
+
+gen = Block(b'0', b'0', 0.0, 151766)
+print(Block.validate_hash(gen, b'\x00\x00'))
