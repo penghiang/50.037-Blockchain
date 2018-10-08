@@ -26,8 +26,12 @@ class Transaction():
 
     def to_json(self) -> str:
         # Serializes object to JSON string
+        if(self.sender == None or self.sender == b''):
+            sender_string = ''
+        else:
+            sender_string = self.sender.to_string().hex()
         json_dict = {
-            "sender": self.sender.to_string().hex(), "receiver": self.receiver.to_string().hex(),
+            "sender": sender_string, "receiver": self.receiver.to_string().hex(),
             "amount": self.amount,
             "signature": self.signature.hex(), "comment": self.comment
             }
@@ -36,8 +40,12 @@ class Transaction():
     def to_json_no_sig(self) -> str:
         # Same as to_json, but signature field is left empty.
         # This function is useful for verifying and signing.
+        if(self.sender == None or self.sender == b''):
+            sender_string = ''
+        else:
+            sender_string = self.sender.to_string().hex()
         json_dict = {
-            "sender": self.sender.to_string().hex(), "receiver": self.receiver.to_string().hex(),
+            "sender": sender_string, "receiver": self.receiver.to_string().hex(),
             "amount": self.amount,
             "signature": '', "comment": self.comment
             }
@@ -48,8 +56,13 @@ class Transaction():
         # Instantiates/Deserializes object from JSON string
         # Does not validate the signature
         data = json.loads(jsonstring)
+        sender = data["sender"]
+        if(sender != ''):
+            sender = ecdsa.VerifyingKey.from_string(bytes.fromhex(data["sender"]))
+        else: 
+            sender = b''
         newTransaction = trscn(
-            sender = ecdsa.VerifyingKey.from_string(bytes.fromhex(data["sender"])),
+            sender = sender,
             receiver = ecdsa.VerifyingKey.from_string(bytes.fromhex(data["receiver"])),
             amount = data["amount"],
             comment = data["comment"],
@@ -70,7 +83,7 @@ class Transaction():
         # Returns false if the signature is wrong.
         json_string = self.to_json_no_sig()
         try:
-            if(self.signature == None or self.signature == '' or self.amount < 0):
+            if(self.signature == None or self.signature == b'' or self.amount < 0):
                 return False
             self.sender.verify(self.signature, json_string.encode('utf-8'))
             return True

@@ -86,8 +86,12 @@ class Block():
         self.transaction_root = self.transactions.get_root()
 
     @staticmethod
-    def mine(prev_header: bytes, transactions: List[bytes], difficulty: bytes) -> 'Block':
-        transtree = MerkleTree(transactions)
+    def mine(prev_header: bytes, transactions: List, difficulty: bytes) -> 'Block':
+        if(type(transactions[0]) != bytes):
+            transactions_bytes = [x.to_json().encode() for x in transactions] 
+            transtree = MerkleTree(transactions_bytes)
+        else:
+            transtree = MerkleTree(transactions)
         timestamp = time.time()
         nonce = random.randint(-2147483648, 2147483647)
         newblock = Block(prev_header, transtree.get_root() , timestamp, nonce, transtree)
@@ -100,7 +104,11 @@ class Block():
 
     @staticmethod
     def mine_once(prev_header: bytes, transactions: List[bytes], difficulty: bytes) -> 'Block':
-        transtree = MerkleTree(transactions)
+        if(type(transactions[0]) != bytes):
+            transactions_bytes = [x.to_json().encode() for x in transactions] 
+            transtree = MerkleTree(transactions_bytes)
+        else:
+            transtree = MerkleTree(transactions)
         timestamp = time.time()
         nonce = random.randint(-2147483648, 2147483647)
         # nonce = nonce & 0b11111111111111111111111111111111
