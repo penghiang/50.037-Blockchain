@@ -3,6 +3,7 @@ from block import Block
 from wallet import Wallet
 from transaction import Transaction
 from typing import List
+import ecdsa
 
 class Miner():
     def __init__(self):
@@ -60,4 +61,12 @@ class Miner():
 
 
 if __name__ == '__main__':
-    pass
+    miner1 = Miner()
+    miner2 = Miner()
+    testtransaction = Transaction(miner2.wallet.get_public_key(),miner1.wallet.get_public_key(),1, sender_key=miner2.wallet.get_private_key())
+    testblock = Block.mine(miner1.blockchain.latest_blocks[-1].block.get_header(),[testtransaction], b'\x00\x00')
+    assert(miner1.receive_block(testblock))
+    print(len(miner1.blockchain.blocks))
+        
+    
+    
