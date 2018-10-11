@@ -51,6 +51,7 @@ class Miner():
     # Adds transactions to self.transactions
     # This is use for single transactions while verify_transactions is used for a list of transactions.
     # This does not yet update the balance, only when a block is mined the balance is updated.
+    # If the transaction is rejected, the transaction is thrown away instead of being put into an orphan pool.
     def add_transaction(self, transaction: Transaction):
         if(transaction.validate()):
             if(self.check_balances([transaction])):
@@ -83,11 +84,14 @@ class Miner():
     # First updates all the transactions into a copy of current balances, 
     # Then checks if any balance is negative.
     # Returns False if any balance is negative, True otherwise.
+    # Does not check b''
     def check_balances(self, transactions: List[Transaction]) -> bool:
         testbalances = copy.deepcopy(self.balances)
         for i in transactions:
             self._update_balances(i, testbalances)
         for i in testbalances:
+            if(i == b''):
+                continue
             if(testbalances[i] < 0):
                 return False
         return True
@@ -98,7 +102,7 @@ class Miner():
     def _update_balances(self, inp_transaction: Transaction, balances: Dict=None):
         if (balances == None):
             balances = self.balances
-        sender = inp_transaction.sender.to_string()
+        sender = inp_transaction.sender if inp_transaction.sender == b'' else inp_transaction.sender.to_string()
         receiver = inp_transaction.receiver.to_string()
         amount: float = inp_transaction.amount
         if not (sender in balances):
@@ -145,9 +149,10 @@ class Miner():
         verified = self.verify_transactions(block.transactions.get_entries())
         if (verified):
             if(block.validate(self.blockchain.difficulty)):
+                for i in block.transactions.get_entries():
+                    self._update_balances(Transaction.from_json(i))
                 self.blockchain.add(block)
                 # update balance, but inefficiency
-                self._update_balances(block.transactions.get_entries())
                 self._update_self_wallet(block.transactions.get_entries())
                 self.remove_repeated_transactions(block.transactions.get_entries())
                 return True
@@ -201,7 +206,9 @@ class Miner():
             transaction = Transaction.from_json(trans.decode())
             if (transaction.receiver.to_string() == self.wallet.get_public_key().to_string()):
                 self.wallet.deposit(transaction.amount)
-            if (transaction.sender.to_string() == self.wallet.get_public_key().to_string()):
+            if (transaction.sender == b''):
+                continue
+            elif (transaction.sender.to_string() == self.wallet.get_public_key().to_string()):
                 if not (self.wallet.withdraw(transaction.amount)):
                     # Not enough cash from wallet, shouldn't happen.
                     # Transactions should have been validated in .receive_blocks()

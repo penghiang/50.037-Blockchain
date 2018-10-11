@@ -1,6 +1,6 @@
 import json
 import ecdsa
-
+from typing import Union
 # Question 4
 sk = ecdsa.SigningKey.generate()
 vk = sk.get_verifying_key()
@@ -52,9 +52,11 @@ class Transaction():
         return json.dumps(json_dict, sort_keys=True)
 
     @classmethod
-    def from_json(trscn, jsonstring: str) -> 'Transaction':
+    def from_json(trscn, jsonstring: Union[str, bytes]) -> 'Transaction':
         # Instantiates/Deserializes object from JSON string
         # Does not validate the signature
+        if(type(jsonstring) == bytes):
+            jsonstring = jsonstring.decode()
         data = json.loads(jsonstring)
         sender = data["sender"]
         if(sender != ''):
