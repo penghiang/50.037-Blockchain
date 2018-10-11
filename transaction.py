@@ -13,7 +13,7 @@ vk2 = sk2.get_verifying_key()
 # Need to ensure that coins cannot be double-spent
 
 class Transaction():
-    def __init__(self, sender, receiver, amount: int, comment: str ='', signature=None, sender_key=None):
+    def __init__(self, sender, receiver, amount: float, comment: str ='', signature=None, sender_key=None):
         # Sender and receivers are public keys
         # There might be no signature or string or sender_key
         self.sender = sender
@@ -83,7 +83,7 @@ class Transaction():
         # Returns false if the signature is wrong.
         json_string = self.to_json_no_sig()
         try:
-            if(self.signature == None or self.signature == b'' or self.amount < 0):
+            if(self.signature == None or self.signature == b'' or self.amount < 0.0):
                 return False
             self.sender.verify(self.signature, json_string.encode('utf-8'))
             return True
@@ -99,15 +99,15 @@ class Transaction():
 
 if __name__ == "__main__":
 
-    newtransaction = Transaction(vk, vk2, 123, sender_key=sk)
+    newtransaction = Transaction(vk, vk2, 123.1, sender_key=sk)
     assert(newtransaction.validate())
     # Tests if validation works
 
-    newtransaction2 = Transaction(vk2, vk, 3, signature=newtransaction.signature)
+    newtransaction2 = Transaction(vk2, vk, 3.1, signature=newtransaction.signature)
     assert(not newtransaction2.validate())
     # Tests if validation works for wrong signatures.
 
-    newtransaction5 = Transaction(vk, vk2, 123)
+    newtransaction5 = Transaction(vk, vk2, 123.1)
     assert(not newtransaction5.validate())
     # Tests if validation works without signature
 
@@ -119,7 +119,7 @@ if __name__ == "__main__":
     assert(newtransaction4.validate())
     # Tests if from_json works.
 
-    newtransaction3 = Transaction(vk, vk2, 123, signature=newtransaction.signature)
+    newtransaction3 = Transaction(vk, vk2, 123.1, signature=newtransaction.signature)
     assert(newtransaction4 == newtransaction3)
     # Testing both __eq__() and whether from_json() works correctly.
 

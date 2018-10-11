@@ -6,18 +6,15 @@ class Wallet():
     def __init__(self):
         self.sk = ecdsa.SigningKey.generate()
         self.vk = self.sk.get_verifying_key()
-        self.balance = 0
+        self.balance = 0.0
     
     def get_public_key(self):
         return self.vk
 
-    def get_private_key(self):
-        return self.sk
-
     def get_amount(self):
         return self.balance
     
-    def withdraw(self, amount: float):
+    def withdraw(self, amount: float) -> bool:
         if(self.balance > amount):
             self.balance -= amount
             return True

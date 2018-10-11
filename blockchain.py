@@ -97,11 +97,12 @@ class BlockChain():
         return curr_longest
 
     # Automatically finds the longest chain and mines.
-    def mine_and_add(self, transactions: List[bytes]):
+    # The block returned is automatically already added to its own blockchain
+    def mine(self, transactions: List) -> Block:
         longest = self.get_longest_chain()
-        newblock = Block.mine(longest.block.get_header(), transactions, self.difficulty)
-        print(newblock.get_header())
-        self.add(newblock)
+        block = Block.mine(longest.block.get_header(), transactions, self.difficulty)
+        print(block.get_header())
+        return block
 
     # This copy doesn't copy deep enough, but a deep copy has to go pretty deep
     def get_copy(self) -> 'BlockChain':
@@ -124,7 +125,7 @@ if __name__ == "__main__":
     print("Mined testblock2")
 
     # We continue mining,
-    testblockchain.mine_and_add([b'23'])
+    testblockchain.mine([b'23'])
     assert(len(testblockchain.blocks) == 2)
     assert(len(testblockchain.latest_blocks) == 1)
 
@@ -153,7 +154,7 @@ if __name__ == "__main__":
     assert(len(testblockchain.blocks) == 6)
     assert(len(testblockchain.latest_blocks) == 2)
     assert(testblockchain.get_longest_chain().length == 5)
-    testblockchain.mine_and_add([b'21'])
+    testblockchain.mine([b'21'])
     assert(testblockchain.get_longest_chain().length == 6)
 
     # Validate time/timestamps

@@ -132,7 +132,7 @@ class MerkleTree():
             currnode = currnode.parent
         return currnode
 
-    def get_entries(self):
+    def get_entries(self) -> List[bytes]:
         return self.dataentries
 
     def __init__(self, trnscs: List[bytes] = None):
