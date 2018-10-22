@@ -81,9 +81,9 @@ class Miner():
             transactions: List[Transaction] = [Transaction.from_json(x.decode()) for x in inp_transactions]
         else:
             transactions: List[Transaction] = inp_transactions
-        # testbalances = copy.deepcopy(self.balances)
         if(transactions[0].amount == 100.0 and transactions[0].sender == b''):
-            self.check_balances(transactions, balance_to)
+            if not (self.check_balances(transactions, balance_to)):
+                return False
             for transaction in transactions[1:]:
                 if (not transaction.validate()):
                     return False
@@ -160,7 +160,7 @@ class Miner():
         if(balance is None):
             # It's an orphan
             self.blockchain.add(block)
-            return
+            return False
 
         # try:
         #     block_balance = self.balances[block.prev_header]
@@ -189,7 +189,9 @@ class Miner():
                     self.balances[block.get_header()] = self.compute_balance(block.get_header())
                 return True
             else:
-                raise ValueError("Failed to validate block")
+                print("Failed to validate block")
+                return False
+                # raise ValueError("Failed to validate block")
         # raise ValueError("failed to verify transactions")
         return False
 
@@ -202,13 +204,17 @@ class Miner():
         else:
             transactions: List[Transaction] = input_transaction
         leftovers = self.transactions[:]
+        to_be_popped: List[int] = []
         for i, self_transaction in enumerate(self.transactions[1:]):
             for other_transaction in transactions:
                 if(self_transaction.to_json() == other_transaction.to_json()):
                     # Since we've implemented __eq__, we can just do 
                     # self_transaction == other_transaction
                     print("Removed a transaction")
-                    leftovers.pop(i+1)
+                    to_be_popped.append(i+1)
+        for i in to_be_popped[::-1]:
+            # We're popping from the back
+            leftovers.pop(i)
         self.transactions = leftovers
 
     # Broadcasts block to other miners
@@ -295,8 +301,13 @@ class Miner():
                 balances2[i] = balances1[i]
         return balances2
 
-    # TODO: balances is a dictionary of dictionaries, there are n number of entries, where
-    #   n is the number of different forks, key is by blockchain.latest_block
+    def add_orphans(self):
+        for orphan in self.blockchain.orphans[:]:
+            if(self.receive_block(orphan)):
+                self.blockchain.orphans.remove(orphan)
+                print("Orphan added to blockchain!")
+                
+        
     
                 
 
@@ -327,6 +338,13 @@ if __name__ == '__main__':
         b'\x00\x00'
     )
 
+    testtransaction2 = Transaction(
+        miner2.wallet.get_public_key(),
+        miner1.wallet.get_public_key(),
+        1.1,
+        sender_key=miner2.wallet.sk
+    )
+
     # After mining a block and having a few test transactions, we send it to miners.
 
     assert(miner1.receive_block(testblock))
@@ -340,13 +358,16 @@ if __name__ == '__main__':
     assert(len(miner2.blockchain.blocks)==2)
     # miner1 and miner2 should have both added the transactions to block.
 
-    miner2.add_transaction(testtransaction)
-    miner1.add_transaction(testtransaction)
+    miner2.add_transaction(testtransaction2)
+    miner1.add_transaction(testtransaction2)
     assert(len(miner1.transactions) == 2)
     assert(len(miner2.transactions) == 2)
     testblock2 = miner2.mine()
     assert(len(miner1.transactions)==2)
+    assert not (miner1.verify_transaction(testtransaction2))
+    # This tests verify_transaction.
     miner1.receive_block(testblock2)
+    assert (miner1.verify_transaction(testtransaction2))
     assert(len(miner1.transactions)==1)
     assert(len(miner1.blockchain.blocks)==3)
     assert(len(miner1.transactions) == len(miner2.transactions))
@@ -355,4 +376,30 @@ if __name__ == '__main__':
     testblock3 = miner1.mine()
     assert(miner1.verify_transaction(testtransaction) == miner2.verify_transaction(testtransaction))
     
+    testtransaction3 = Transaction(
+        miner2.wallet.get_public_key(),
+        miner1.wallet.get_public_key(),
+        1000,
+        sender_key=miner2.wallet.sk
+    )
+    assert not (miner1.add_transaction(testtransaction3))
+    assert (len(miner1.transactions)==1)
+    testblock4 = Block.mine(
+        miner1.blockchain.latest_blocks[-1].block.get_header(),
+        [first_transaction,testtransaction3],
+        b'\x00\x00'
+    )
+    # Tests rejecting invalid block.
+    assert not (miner1.receive_block(testblock4))
 
+    # Check balances, check orphans, check forks and their balances.
+
+    # Tests if orphaning works. At this stage, we have to manually run .add_orphans()
+    #   But it could easily be automated.
+    testblock5 = miner1.mine()
+    assert not (miner2.receive_block(testblock5))
+    assert(miner2.receive_block(testblock3))
+    assert(len(miner2.blockchain.orphans)==1)
+    miner2.add_orphans()
+    assert(len(miner2.blockchain.blocks)==5)
+    assert(len(miner2.blockchain.orphans)==0)
