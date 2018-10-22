@@ -2,7 +2,7 @@ import time
 import json
 import hashlib
 import random
-from typing import List
+from typing import List, Union
 from merkletree import MerkleTree 
 
 class Block():
@@ -31,7 +31,7 @@ class Block():
 
     @staticmethod
     def validate_hash(block: 'Block', difficulty: bytes) -> bool:
-        json_string = block.to_json()
+        json_string = block.to_json_header()
         _ = hashlib.sha256(json_string.encode('utf-8')).digest()
         difficulty += b'\xff'*(len(_)-len(difficulty))
         # Checks the hash,
@@ -56,7 +56,7 @@ class Block():
     #     )
     #     return newBlock
 
-    def to_json(self) -> str:
+    def to_json_header(self) -> str:
         json_dict = {
             "prev_header": self.prev_header.hex(),
             "transaction_root": self.transaction_root.hex(),
@@ -66,14 +66,47 @@ class Block():
         # Do we need to json this? or can we just simply concatenate
         return json.dumps(json_dict, sort_keys=True)
 
+    def to_json(self) -> str:
+        transaction_list = [x.decode() for x in self.transactions.get_entries()]
+        json_dict = {
+            "prev_header": self.prev_header.hex(),
+            "transaction_root": self.transaction_root.hex(),
+            "timestamp": self.timestamp, 
+            "nonce": self.nonce,
+            "transactions":transaction_list
+        }
+        return json.dumps(json_dict, sort_keys=True)
+
+    @classmethod
+    def from_json(blockclass, json_input: Union[bytes,str]) -> 'Block':
+        if(type(json_input) == bytes):
+            json_str = json_input.decode()
+        else:
+            json_str = json_input
+
+        data = json.loads(json_str)
+        transactions_list = data["transactions"]
+        transactions_list_bytes = [x.encode() for x in transactions_list]
+        transactions = MerkleTree(transactions_list_bytes)
+
+
+        block = blockclass(
+            prev_header = bytes.fromhex(data["prev_header"]),
+            transaction_root = bytes.fromhex(data["transaction_root"]),
+            timestamp = data["timestamp"],
+            nonce = data["nonce"],
+            transactions = transactions
+        )
+        return block
+
     def __eq__(self, otherBlock: 'Block'):
         # Check whether transactions are the same
-        if(self.to_json() == otherBlock.to_json()):
+        if(self.to_json_header() == otherBlock.to_json_header()):
             return True
         return False
 
     def get_header(self) -> bytes:
-        json_str = self.to_json()
+        json_str = self.to_json_header()
         return hashlib.sha256(json_str.encode('utf-8')).digest()
 
     def add_transaction(self, transaction: bytes):
@@ -125,6 +158,8 @@ class Block():
             temp.add(i)
         return temp.get_root()
 
+
+
 if __name__ == "__main__":
     testdifficulty = b'\x00\x00'
     t1 = b'adsf'
@@ -146,5 +181,7 @@ if __name__ == "__main__":
     assert(y.validate(testdifficulty))
 
     # These 2 should be the same
-    print(hashlib.sha256(y.to_json().encode('utf-8')).digest())
-    print(y.get_header())
+    assert (hashlib.sha256(y.to_json_header().encode('utf-8')).digest() == y.get_header())
+
+    assert(Block.from_json(testblock.to_json()).to_json()==testblock.to_json())
+    print("end")

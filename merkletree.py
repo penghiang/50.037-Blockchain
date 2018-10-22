@@ -39,7 +39,7 @@ class MerkleTree():
             # We include the odd one out after building the next level.
             temp = currlevel[-1]
             currlevel = currlevel[:-1]
-        # print(str(len(currlevel)) + 'asd')
+        
         self.allnodes += (currlevel)
         nextlevel = self._build_next_level(currlevel)
         # We build the next level and add the current level into allnodes
@@ -164,14 +164,14 @@ if __name__ == "__main__":
     assert(len(x.dataentries) == 3)
     assert(len(x.allnodes) == 5)
     # for i in x.allnodes:
-        # print(i.data.hex())
+    #     print(i.data.hex())
 
     firsthash = hashlib.sha256(b'1' + hashlib.sha256(b'01').digest() + b'1' + hashlib.sha256(b'0second').digest()).digest() 
-    assert(firsthash.hex())
+    assert(firsthash.hex() == x.allnodes[2].data.hex())
     # This hash should be equals to the first hash we get with our formula
 
     secondhash = hashlib.sha256(b'1' + firsthash + b'1' + hashlib.sha256(b'0tres').digest()).digest()
-    assert(secondhash.hex())
+    assert(secondhash.hex() == x.allnodes[4].data.hex())
     # This hash should be equals the second hash
 
     x.add(b'umpat')
@@ -180,8 +180,8 @@ if __name__ == "__main__":
     assert(len(x.dataentries) == 5)
     assert(len(x.allnodes) == 9)
     # print(len(x.allnodes))
-    for _ in x.allnodes:
-        print(_.data.hex())
+    for i,_ in enumerate(x.allnodes):
+        print("{}: ".format(i), _.data.hex())
     # print(x.get_proof(b'umpat'))
     # If we change get_proof to use .hex() while storing data, we are able to debug this.
     # We can see that b"umpat" uses the 3rd, 5th, and 8th nodes (on L, L and R respectively), 

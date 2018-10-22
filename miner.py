@@ -22,6 +22,7 @@ class Miner():
         initial_transaction = Transaction(b'', self.wallet.get_public_key(), 100., "first transaction", signature=b'')
         self.transactions.append(initial_transaction)
 
+        # Done:
         # initial_transaction needs to be verified 
         # I think we have to verify every transaction before mining..?
         # Need to implement first miner coinbase money
@@ -30,10 +31,12 @@ class Miner():
         # Handle transactions so as to not repeat them in previously mined blocks or such, handle it in .add()?
         # Since searching for the longest chain is relatively cheap, especially if there are little forks, we 
         #   can search for the longest chain every time instead of storing the current longest chain.
+        # We're using a on-the-fly calculation of balances, with some memory storage done every 5 blocks.
+        # Miner needs to have data of all the wallets and how much money they contain to verify transactions.
 
 
-        # Need to make different balances for different fork chains. 
-        #   When we reject transactions/blocks from forks, should we pick up the transactions to be resubmitted again?
+        # Not done:
+        # When we reject transactions/blocks from forks, should we pick up the transactions to be resubmitted again?
         # Transactions should to be checked after and not rejected straight away, deposit might come later than withdrawal.
         # We should be able to implement only certain transactions that are good and reject the rest that are not.
         # Need to respond to other miners for queries about orphan's parents
@@ -42,11 +45,7 @@ class Miner():
         # Need to implement resolving other miner's longer blockchains (miner broadcasts block)
         # Good to make custom exceptions for failed verifications and the likes
         # Need to handle sending the same transactions: miners should check if the transaction has been sent before.
-        # Miner needs to have data of all the wallets and how much money they contain to verify transactions.
         # Need to reject transactions made from shorter chains, and verify transactions from longer chains.
-        # To resolve shorter forks, we can have a set of wallets/money for each fork, or we can compute on the fly.
-        # What happens if miner receives 2 same transactions, should invalidate one of it, except the first transaction
-        #   Or we could make the first transaction appended with a number that keeps increasing by one. 
         # not required: miners joining halfway
 
         # Miners have to send through the network:-
@@ -254,7 +253,7 @@ class Miner():
     
     # This function verifies that the transaction exists in the blockchain
     # This function will return the proof.
-    # Should be used for clients instead of miners.
+    # Should be used for clients.
     def verify_transaction(self, transaction):
         transaction: bytes = transaction.to_json().encode()
         current_block = self.blockchain.get_longest_chain()
@@ -392,7 +391,6 @@ if __name__ == '__main__':
     # Tests rejecting invalid block.
     assert not (miner1.receive_block(testblock4))
 
-    # Check balances, check orphans, check forks and their balances.
 
     # Tests if orphaning works. At this stage, we have to manually run .add_orphans()
     #   But it could easily be automated.
@@ -403,3 +401,5 @@ if __name__ == '__main__':
     miner2.add_orphans()
     assert(len(miner2.blockchain.blocks)==5)
     assert(len(miner2.blockchain.orphans)==0)
+
+    # Extra checks: Check balances, check forks and their balances.
