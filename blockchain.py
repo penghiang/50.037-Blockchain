@@ -9,6 +9,7 @@ class BlockChain():
             self.block: Block = block
             self.previous: 'BlockNode' = previous
             self.length = 1 if previous == None else previous.length+1
+            # next is not really used.
             self.next = []
         
         # We are not using this method
@@ -76,10 +77,10 @@ class BlockChain():
                 self.latest_blocks.remove(found_node)
             except ValueError:
                 print("Fork created.")
-            for i in self.orphans[:]:
-                if(i.prev_header == block.get_header()):
-                    self.add(i)
-                    self.orphans.remove(i)
+            # for i in self.orphans[:]:
+            #     if(i.prev_header == block.get_header()):
+            #         self.add(i)
+            #         self.orphans.remove(i)
             return True
         return False
     
@@ -105,6 +106,7 @@ class BlockChain():
         return block
 
     # This copy doesn't copy deep enough, but a deep copy has to go pretty deep
+    # Not used.
     def get_copy(self) -> 'BlockChain':
         new_chain = BlockChain()
         new_chain.__dict__.update(self.__dict__)

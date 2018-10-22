@@ -13,7 +13,11 @@ class Miner():
             # This refers to the same blockchain object, but we just want a copy of it. 
             self.blockchain = blockchain
         self.transactions = []
-        self.balances: Dict[bytes, float] = {}
+        # self.balances: List[Dict[bytes, float]] = [{}]
+        # self.balances: Dict[bytes, float] = {}
+        # It's a dictionary of a dictionary.
+        # First keys are blocks => headers, second keys are sender/receiver's keys
+        self.balances: Dict[bytes, Dict[bytes, float]] = {}
         self.wallet = Wallet()
         initial_transaction = Transaction(b'', self.wallet.get_public_key(), 100., "first transaction", signature=b'')
         self.transactions.append(initial_transaction)
@@ -23,9 +27,13 @@ class Miner():
         # Need to implement first miner coinbase money
         # Need to have list of transactions to be put into merkle tree mined
         # Miners have to mine
-
         # Handle transactions so as to not repeat them in previously mined blocks or such, handle it in .add()?
+        # Since searching for the longest chain is relatively cheap, especially if there are little forks, we 
+        #   can search for the longest chain every time instead of storing the current longest chain.
 
+
+        # Need to make different balances for different fork chains. 
+        #   When we reject transactions/blocks from forks, should we pick up the transactions to be resubmitted again?
         # Transactions should to be checked after and not rejected straight away, deposit might come later than withdrawal.
         # We should be able to implement only certain transactions that are good and reject the rest that are not.
         # Need to respond to other miners for queries about orphan's parents
@@ -37,7 +45,8 @@ class Miner():
         # Miner needs to have data of all the wallets and how much money they contain to verify transactions.
         # Need to reject transactions made from shorter chains, and verify transactions from longer chains.
         # To resolve shorter forks, we can have a set of wallets/money for each fork, or we can compute on the fly.
-        # What happens if miner receives 2 same transactions, should invalidate that
+        # What happens if miner receives 2 same transactions, should invalidate one of it, except the first transaction
+        #   Or we could make the first transaction appended with a number that keeps increasing by one. 
         # not required: miners joining halfway
 
         # Miners have to send through the network:-
@@ -49,12 +58,13 @@ class Miner():
         self.blockchain.difficulty = difficulty
 
     # Adds transactions to self.transactions
-    # This is use for single transactions while verify_transactions is used for a list of transactions.
+    # This is used for single transactions while validate_transactions is used for a list of transactions.
     # This does not yet update the balance, only when a block is mined the balance is updated.
     # If the transaction is rejected, the transaction is thrown away instead of being put into an orphan pool.
     def add_transaction(self, transaction: Transaction):
         if(transaction.validate()):
-            if(self.check_balances([transaction])):
+            current_balance = self.get_current_balance()
+            if(self.check_balances([transaction], current_balance)):
                 self.transactions.append(transaction)
                 return True
         return False
@@ -66,14 +76,14 @@ class Miner():
     # Verify purely validates transactions to see if they are able to go through, the adding is done later.
     # Does not tell which transactions are wrong, just whether the set is right or wrong.
     # Smartness can be added later, telling which are the rejected transactions.
-    def verify_transactions(self, inp_transactions: List) -> bool:
+    def validate_transactions(self, inp_transactions: List, balance_to: Dict[bytes,float]) -> bool:
         if(type(inp_transactions[0]) == bytes):
             transactions: List[Transaction] = [Transaction.from_json(x.decode()) for x in inp_transactions]
         else:
             transactions: List[Transaction] = inp_transactions
         # testbalances = copy.deepcopy(self.balances)
         if(transactions[0].amount == 100.0 and transactions[0].sender == b''):
-            self.check_balances(transactions)
+            self.check_balances(transactions, balance_to)
             for transaction in transactions[1:]:
                 if (not transaction.validate()):
                     return False
@@ -85,8 +95,8 @@ class Miner():
     # Then checks if any balance is negative.
     # Returns False if any balance is negative, True otherwise.
     # Does not check b''
-    def check_balances(self, transactions: List[Transaction]) -> bool:
-        testbalances = copy.deepcopy(self.balances)
+    def check_balances(self, transactions: List[Transaction], balance: Dict[bytes, float]) -> bool:
+        testbalances = copy.deepcopy(balance)
         for i in transactions:
             self._update_balances(i, testbalances)
         for i in testbalances:
@@ -96,12 +106,11 @@ class Miner():
                 return False
         return True
 
-    # Updates the provided balances, if no balances provided, self.balances is used 
+    # Updates the provided balances
+    # Mutates the passed in dictionary
     # Does not check if amount would be negative.
     # Should be used after/in self.check_balances() as this does not check.
-    def _update_balances(self, inp_transaction: Transaction, balances: Dict=None):
-        if (balances == None):
-            balances = self.balances
+    def _update_balances(self, inp_transaction: Transaction, balances: Dict[bytes, float]):
         sender = inp_transaction.sender if inp_transaction.sender == b'' else inp_transaction.sender.to_string()
         receiver = inp_transaction.receiver.to_string()
         amount: float = inp_transaction.amount
@@ -124,37 +133,60 @@ class Miner():
         # return False
     
     # Updates receiver balance, only used in _update_balances().
-    def _update_receiver_balance(self, receiver: bytes, amount: float, balances: Dict):
-        if(receiver in self.balances):
-            balances[receiver] += amount
-        else:
-            balances[receiver] = amount
+    # Unused, we have changed the balance checking mechanism
+    # def _update_receiver_balance(self, receiver: bytes, amount: float, balances: Dict):
+    #     if(receiver in self.balances):
+    #         balances[receiver] += amount
+    #     else:
+    #         balances[receiver] = amount
 
     # Gets the root of transactions after verifying them
     # Currently unused
     def get_root(self) -> bytes:
-        if(self.verify_transactions(self.transactions)):
-            transactions_bytes = [x.to_json().encode() for x in self.transactions]
-            return Block.get_transaction_root(transactions_bytes)
+        return None
+        # if(self.validate_transactions(self.transactions)):
+        #     transactions_bytes = [x.to_json().encode() for x in self.transactions]
+        #     return Block.get_transaction_root(transactions_bytes)
 
     # Receives block from other miners
     # Validates the new block, then add it into the blockchain.
 
-    # Just whether it can go through or cannot go through, it's ok if update balances is repeated??
     # I check, then if it's good, 
     # I'll add the block and update my balances and update my wallet and remove repeated transactions
-    # ._add_block() is useless now
     # To be more efficient, I could store my output of verify_transactions, of the new balance and replace it
-    def receive_block(self, block: Block) -> bool:
-        verified = self.verify_transactions(block.transactions.get_entries())
+    def receive_block(self, block: Block) -> bool: 
+        # We need to handle errors for prev_header not being there.
+        balance = self.compute_balance(block.prev_header)
+        if(balance is None):
+            # It's an orphan
+            self.blockchain.add(block)
+            return
+
+        # try:
+        #     block_balance = self.balances[block.prev_header]
+        # except KeyError:
+        #     # If code reaches here, probably orphan or new fork.
+        #     for i in self.blockchain.blocks[:]:
+        #         # Fork
+        #         if(block.prev_header == i.block.get_header()):
+        #             # prev block found, real fork.
+        #             block_balance = self.compute_balance(i.block.get_header())
+        #     if(block_balance == None):
+        #         # orphan
+        #         self.blockchain.add(block)
+        #         # adding without checking??
+
+        verified = self.validate_transactions(block.transactions.get_entries(), balance)
         if (verified):
             if(block.validate(self.blockchain.difficulty)):
                 for i in block.transactions.get_entries():
-                    self._update_balances(Transaction.from_json(i))
+                    self._update_balances(Transaction.from_json(i), balance)
                 self.blockchain.add(block)
-                # update balance, but inefficiency
                 self._update_self_wallet(block.transactions.get_entries())
                 self.remove_repeated_transactions(block.transactions.get_entries())
+                if (self.blockchain.blocks[-1].length % 5 == 0):
+                    # After an arbitrary number, stores computed balance 
+                    self.balances[block.get_header()] = self.compute_balance(block.get_header())
                 return True
             else:
                 raise ValueError("Failed to validate block")
@@ -176,7 +208,7 @@ class Miner():
                     # Since we've implemented __eq__, we can just do 
                     # self_transaction == other_transaction
                     print("Removed a transaction")
-                    leftovers.pop(i)
+                    leftovers.pop(i+1)
         self.transactions = leftovers
 
     # Broadcasts block to other miners
@@ -185,10 +217,10 @@ class Miner():
 
     # This mines and adds the block, returns the new block mined to be broadcasted.
     # To verify transactions, we used .receive_block(). 
-    # If it returns false the transactions have an issue, which shouldn't happen as self.transactions are already validated
+    # If it errors the transactions have an issue, which shouldn't happen as self.transactions are already validated
     def mine(self) -> Block:
         newblock = self.blockchain.mine(self.transactions)
-        if not (self.receive_block(newblock)): # This shouldn't return false...
+        if not (self.receive_block(newblock)): # This shouldn't raise an error...
             raise ValueError("Block not received properly after mining, probably some transactions are wrong")
         return newblock
 
@@ -213,8 +245,64 @@ class Miner():
                     # Not enough cash from wallet, shouldn't happen.
                     # Transactions should have been validated in .receive_blocks()
                     raise ValueError("Not enough money, shouldn't happen")
-        
+    
+    # This function verifies that the transaction exists in the blockchain
+    # This function will return the proof.
+    # Should be used for clients instead of miners.
+    def verify_transaction(self, transaction):
+        transaction: bytes = transaction.to_json().encode()
+        current_block = self.blockchain.get_longest_chain()
+        while current_block != None:
+            proof = current_block.block.transactions.get_proof(transaction)
+            if proof != None:
+                return proof
+            current_block = current_block.previous
+        return None
 
+    # Computes the balance from the stated header to the genesis block.
+    # Computes the balance on the fly, can be used in forking or verification.
+    # Assumes the header provided is good.
+    # Makes use of self.balances to reduce computation.
+    def compute_balance(self, header: bytes) -> Dict[bytes,float]:
+        current_node = self.blockchain.get_matching_header(header)
+        if (current_node == None):
+            return None
+        balance = {}
+        while (current_node != None):
+            if(current_node.block.get_header() in self.balances):
+                return self.combine_balances(self.balances[current_node.block.get_header()], balance)
+            current_transactions = current_node.block.transactions.get_entries()
+            for transaction in current_transactions:
+                trans = Transaction.from_json(transaction)
+                self._update_balances(trans, balance)
+            current_node = current_node.previous
+        return balance
+
+    # Gets the longest chain's balance.
+    def get_current_balance(self) -> Dict[bytes, float]:
+        current_longest_chain_header = self.blockchain.get_longest_chain().block.get_header()
+        return self.compute_balance(current_longest_chain_header)
+
+
+    # Given 2 balances, adds them together.
+    def combine_balances(self, inp_balances1, inp_balances2):
+        balances1 = copy.deepcopy(inp_balances1)
+        balances2 = copy.deepcopy(inp_balances2)
+        for i in balances1:
+            if(i in balances2):
+                balances2[i] += balances1[i]
+            else:
+                balances2[i] = balances1[i]
+        return balances2
+
+    # TODO: balances is a dictionary of dictionaries, there are n number of entries, where
+    #   n is the number of different forks, key is by blockchain.latest_block
+    
+                
+
+
+    
+    
     
 
         
@@ -223,8 +311,8 @@ class Miner():
 if __name__ == '__main__':
     miner1 = Miner()
     miner2 = Miner()
-    print(miner1.wallet.get_public_key().to_string() == miner2.wallet.get_public_key().to_string())
-    print(len(miner1.blockchain.blocks))
+    assert(miner1.wallet.get_public_key().to_string() != miner2.wallet.get_public_key().to_string())
+    assert(len(miner1.blockchain.blocks)==1)
     first_transaction = Transaction(b'', miner2.wallet.get_public_key(), 100., "first transaction", signature=b'')
     testtransaction = Transaction(
         miner2.wallet.get_public_key(),
@@ -239,21 +327,32 @@ if __name__ == '__main__':
         b'\x00\x00'
     )
 
+    # After mining a block and having a few test transactions, we send it to miners.
+
     assert(miner1.receive_block(testblock))
-    print(len(miner2.blockchain.blocks))
-    print(len(miner2.transactions), "asdf")
+    assert(len(miner2.blockchain.blocks)==1)
+    assert(miner2.transactions[0].sender == b'')
+    assert(miner2.transactions[0].receiver == miner2.wallet.get_public_key())
+    # miner2's first transaction should still be the coinbase one
     miner2.receive_block(testblock)
 
-    print(len(miner1.blockchain.blocks))
-    print(len(miner2.blockchain.blocks))
+    assert(len(miner1.blockchain.blocks)==2)
+    assert(len(miner2.blockchain.blocks)==2)
+    # miner1 and miner2 should have both added the transactions to block.
 
     miner2.add_transaction(testtransaction)
     miner1.add_transaction(testtransaction)
-    print(len(miner1.transactions), len(miner2.transactions), "asdf")
+    assert(len(miner1.transactions) == 2)
+    assert(len(miner2.transactions) == 2)
     testblock2 = miner2.mine()
-    print(len(miner1.blockchain.blocks))
+    assert(len(miner1.transactions)==2)
     miner1.receive_block(testblock2)
-    print(len(miner1.blockchain.blocks))
-    print(len(miner1.transactions), len(miner2.transactions), "asdf")
+    assert(len(miner1.transactions)==1)
+    assert(len(miner1.blockchain.blocks)==3)
+    assert(len(miner1.transactions) == len(miner2.transactions))
+
+    # This tests if verify_transaction still works if transaction is in previous block
+    testblock3 = miner1.mine()
+    assert(miner1.verify_transaction(testtransaction) == miner2.verify_transaction(testtransaction))
     
-    
+
