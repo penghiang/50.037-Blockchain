@@ -1,7 +1,7 @@
 import ecdsa 
 
 # We did not implement signing from wallet, signing is done with Transaction.sign(key)
-# instead of Wallet.sign(transaction)
+#   instead of Wallet.sign(transaction)
 class Wallet():
     def __init__(self):
         self.sk = ecdsa.SigningKey.generate()

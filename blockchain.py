@@ -83,9 +83,6 @@ class BlockChain():
             #         self.orphans.remove(i)
             return True
         return False
-    
-    # def get_latest_header(self) -> bytes:
-    #     return self.latest_blocks.get_header()
 
     # Gets the longest chain.
     def get_longest_chain(self) -> 'BlockNode':
@@ -105,6 +102,11 @@ class BlockChain():
         print(block.get_header())
         return block
 
+    def mine_once(self, transactions: List) -> Block:
+        longest = self.get_longest_chain()
+        block = Block.mine_once(longest.block.get_header(), transactions, self.difficulty)
+        return block
+
     # This copy doesn't copy deep enough, but a deep copy has to go pretty deep
     # Not used.
     def get_copy(self) -> 'BlockChain':
@@ -113,7 +115,7 @@ class BlockChain():
         return new_chain
 
 if __name__ == "__main__":
-    # Difficulty is reduced 
+    # Difficulty is reduced for testing
     testdifficulty = b'\x00\x0f'
     testblockchain = BlockChain()
     testblockchain.difficulty = testdifficulty
@@ -161,17 +163,8 @@ if __name__ == "__main__":
 
     # Validate time/timestamps
 
-    # Do we have to implement UTXO transactions? If we do: 
-    # What does it mean when you take input and output as transactions, do we pass in the function as an input? 
-    # or is it the hash (/unique identifier) that we put in as input
-
     # For miner class: 
-    # So the miner mines, then adds to the blockchain.
-    # When do the transactions come into play?
-    # How do we know which miner mined the block?
     # How do we raise the difficulty? through the nakamoto consensus? (everybody propagates an opinion?)
     # To test the miner, do we need to come up with a network of miners? (to broadcast newly mined blocks)
-    # How do we send transactions around? Do we just send transactions to all miners?
-    # Then hope all miners will add them in when they mine the next block?
     
     

@@ -1,3 +1,5 @@
 timetable
 __pycache__/
 .vscode/
+utxotransaction.py
+test.py

@@ -180,12 +180,12 @@ if __name__ == "__main__":
     assert(len(x.dataentries) == 5)
     assert(len(x.allnodes) == 9)
     # print(len(x.allnodes))
-    for i,_ in enumerate(x.allnodes):
-        print("{}: ".format(i), _.data.hex())
+    for index,_ in enumerate(x.allnodes):
+        print("{}: ".format(index), _.data.hex())
     # print(x.get_proof(b'umpat'))
     # If we change get_proof to use .hex() while storing data, we are able to debug this.
     # We can see that b"umpat" uses the 3rd, 5th, and 8th nodes (on L, L and R respectively), 
-    # which is consistent if we were to draw this out.
+    #   which is consistent if we were to draw this out.
 
     # Some tests for verify_proof
     assert(verify_proof(b'tres', x.get_proof(b'tres'), x.get_root()))

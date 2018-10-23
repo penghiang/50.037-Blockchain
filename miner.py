@@ -72,9 +72,8 @@ class Miner():
     # Runs .validate() on all transactions, handles the first transaction differently.
     # Used in .receive_block(), when a block is received.
     # Does not check for signature of the first transaction as there isn't any. 
-    # Verify purely validates transactions to see if they are able to go through, the adding is done later.
+    # Verify only validates transactions to see if they are able to go through, the adding is done later.
     # Does not tell which transactions are wrong, just whether the set is right or wrong.
-    # Smartness can be added later, telling which are the rejected transactions.
     def validate_transactions(self, inp_transactions: List, balance_to: Dict[bytes,float]) -> bool:
         if(type(inp_transactions[0]) == bytes):
             transactions: List[Transaction] = [Transaction.from_json(x.decode()) for x in inp_transactions]
@@ -105,8 +104,8 @@ class Miner():
                 return False
         return True
 
-    # Updates the provided balances
-    # Mutates the passed in dictionary
+    # Updates the provided balances with inp_transaction
+    # Mutates the passed-in dictionary
     # Does not check if amount would be negative.
     # Should be used after/in self.check_balances() as this does not check.
     def _update_balances(self, inp_transaction: Transaction, balances: Dict[bytes, float]):
@@ -120,39 +119,17 @@ class Miner():
         balances[sender] -= amount
         balances[receiver] += amount
 
-        # if(sender in balances):
-        #     if(balances[sender] >= inp_transaction.amount):
-        #         balances[sender] -= inp_transaction.amount
-        #         self._update_receiver_balance(receiver, inp_transaction.amount, balances)
-        #         return True
-        #     else:
-        #         print("Sender doesn't have enough money")
-        #         return False
-        # print("Sender not registered in balance")
-        # return False
-    
-    # Updates receiver balance, only used in _update_balances().
-    # Unused, we have changed the balance checking mechanism
-    # def _update_receiver_balance(self, receiver: bytes, amount: float, balances: Dict):
-    #     if(receiver in self.balances):
-    #         balances[receiver] += amount
-    #     else:
-    #         balances[receiver] = amount
-
     # Gets the root of transactions after verifying them
     # Currently unused
-    def get_root(self) -> bytes:
-        return None
+    # def get_root(self) -> bytes:
         # if(self.validate_transactions(self.transactions)):
         #     transactions_bytes = [x.to_json().encode() for x in self.transactions]
         #     return Block.get_transaction_root(transactions_bytes)
 
     # Receives block from other miners
     # Validates the new block, then add it into the blockchain.
-
-    # I check, then if it's good, 
-    # I'll add the block and update my balances and update my wallet and remove repeated transactions
-    # To be more efficient, I could store my output of verify_transactions, of the new balance and replace it
+    # I check the received block, then if it's good, 
+    #   I'll add the block and update my balances and update my wallet and remove repeated transactions
     def receive_block(self, block: Block) -> bool: 
         # We need to handle errors for prev_header not being there.
         balance = self.compute_balance(block.prev_header)
@@ -160,20 +137,6 @@ class Miner():
             # It's an orphan
             self.blockchain.add(block)
             return False
-
-        # try:
-        #     block_balance = self.balances[block.prev_header]
-        # except KeyError:
-        #     # If code reaches here, probably orphan or new fork.
-        #     for i in self.blockchain.blocks[:]:
-        #         # Fork
-        #         if(block.prev_header == i.block.get_header()):
-        #             # prev block found, real fork.
-        #             block_balance = self.compute_balance(i.block.get_header())
-        #     if(block_balance == None):
-        #         # orphan
-        #         self.blockchain.add(block)
-        #         # adding without checking??
 
         verified = self.validate_transactions(block.transactions.get_entries(), balance)
         if (verified):
@@ -183,8 +146,8 @@ class Miner():
                 self.blockchain.add(block)
                 self._update_self_wallet(block.transactions.get_entries())
                 self.remove_repeated_transactions(block.transactions.get_entries())
+                # After 5(arbitrary number) blocks, stores computed balance in self.balances for efficiency
                 if (self.blockchain.blocks[-1].length % 5 == 0):
-                    # After an arbitrary number, stores computed balance 
                     self.balances[block.get_header()] = self.compute_balance(block.get_header())
                 return True
             else:
@@ -229,15 +192,26 @@ class Miner():
             raise ValueError("Block not received properly after mining, probably some transactions are wrong")
         return newblock
 
+    # Attempts to mine once, so we are able to interrupt the mining.
+    # Returns None if it fails to get a valid block.
+    def mine_once(self) -> Block:
+        newblock = self.blockchain.mine_once(self.transactions)
+        if (newblock is not None):
+            if not (self.receive_block(newblock)): # This shouldn't raise an error...
+                raise ValueError("Block not received properly after mining, probably some transactions are wrong")
+            return newblock
+        return None
+    
+
     # Private method used in mine() and receive_block(), for doing some actions to add a block.
     # update transactions should be here.
     # Not used, implementation is put in receive_block
-    def _add_block(self, newblock: Block):
-        self.blockchain.add(newblock)
-        self._update_self_wallet(newblock.transactions.get_entries())
-        self.remove_repeated_transactions(newblock.transactions.get_entries())
+    # def _add_block(self, newblock: Block):
+    #     self.blockchain.add(newblock)
+    #     self._update_self_wallet(newblock.transactions.get_entries())
+    #     self.remove_repeated_transactions(newblock.transactions.get_entries())
 
-    # Used in _add_block, to update self.wallet with transactions
+    # To update self.wallet with transactions
     def _update_self_wallet(self, transactions: List):
         for trans in transactions:
             transaction = Transaction.from_json(trans.decode())
@@ -267,7 +241,7 @@ class Miner():
     # Computes the balance from the stated header to the genesis block.
     # Computes the balance on the fly, can be used in forking or verification.
     # Assumes the header provided is good.
-    # Makes use of self.balances to reduce computation.
+    # Makes use of self.balances to reduce computation. (kinda like checkpoints)
     def compute_balance(self, header: bytes) -> Dict[bytes,float]:
         current_node = self.blockchain.get_matching_header(header)
         if (current_node == None):
@@ -300,6 +274,7 @@ class Miner():
                 balances2[i] = balances1[i]
         return balances2
 
+    # Checks for orphans in self.blockchain, and attempts to add all of them in a for loop.
     def add_orphans(self):
         for orphan in self.blockchain.orphans[:]:
             if(self.receive_block(orphan)):
@@ -308,6 +283,8 @@ class Miner():
                 
         
     
+
+
                 
 
 

@@ -101,7 +101,7 @@ class Block():
 
     def __eq__(self, otherBlock: 'Block'):
         # Check whether transactions are the same
-        if(self.to_json_header() == otherBlock.to_json_header()):
+        if(self.to_json() == otherBlock.to_json()):
             return True
         return False
 
