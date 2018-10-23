@@ -19,7 +19,7 @@ class BlockChain():
     def __init__(self, difficulty: bytes = b'\x00\x00'):
         # genesis = Block.mine(b'0',[b''], b'\x00\x00')
         genesis = Block(b'0', b'0', 0.0, 151766)
-        self.blocks = []
+        self.blocks: List['BlockNode'] = []
         self.blocks.append(self.BlockNode(genesis, None))
         self.latest_blocks = []
         self.latest_blocks.append(self.BlockNode(genesis, None))

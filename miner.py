@@ -379,4 +379,7 @@ if __name__ == '__main__':
     assert(len(miner2.blockchain.blocks)==5)
     assert(len(miner2.blockchain.orphans)==0)
 
-    # Extra checks: Check balances, check forks and their balances.
+    # Checks if both miners have the same balances
+    assert(miner1.balances == miner2.balances)
+
+    # Extra checks: check forks and their balances.

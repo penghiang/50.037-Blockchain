@@ -40,6 +40,6 @@ class SPVClient():
     # Send transactions and blocks
     # Confirming transactions are in the blockchain
     # Only sending block headers to SPVClients
-    #   Identifying which network nodes are clients and which are miners.
+    #   Identifying which network nodes are clients and which are miners. (can be hardcoded?)
     # 
     
