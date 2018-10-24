@@ -87,8 +87,9 @@ class MerkleTree():
 
     def get_proof(self, entry):
         # Get membership proof for entry
-        # Returns a list of a list, innerlist[0] = hash, 
-        # innerlist[1] = "r" or "l", indicating the direction it is to be appended to 
+        # Returns a list of a list, 
+        #   innerlist[0] = hash, 
+        #   innerlist[1] = "r" or "l", indicating the direction it is to be appended to 
         hashlist = []
         if (entry not in self.dataentries):
             return 
@@ -142,7 +143,7 @@ class MerkleTree():
             for i in trnscs:
                 self.add(i)
 
-def verify_proof(entry, proof, root: bytes):
+def verify_proof(entry, proof, root: bytes) -> bool:
     # Verifies proof for entry and given root. Returns boolean.
     currhash = hashlib.sha256(b'0' + entry).digest()
     for i in proof:

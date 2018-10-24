@@ -234,7 +234,8 @@ class Miner():
         while current_block != None:
             proof = current_block.block.transactions.get_proof(transaction)
             if proof != None:
-                return proof
+                root = current_block.block.transaction_root
+                return proof, root
             current_block = current_block.previous
         return None
 

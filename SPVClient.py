@@ -1,6 +1,5 @@
 from transaction import Transaction
 from wallet import Wallet
-from merkletree import verify_proof
 import json
 import hashlib
 import ecdsa
@@ -36,10 +35,12 @@ class SPVClient():
     # Network:
     # Request parents of orphans
     # Request transaction proof
-    # Request/broadcast block headers
-    # Send transactions and blocks
     # Confirming transactions are in the blockchain
+    # Request/broadcast block headers
     # Only sending block headers to SPVClients
     #   Identifying which network nodes are clients and which are miners. (can be hardcoded?)
-    # 
+
+    # Done: 
+    # Send transactions and blocks
+    # SPV client request amount (wallet)
     
