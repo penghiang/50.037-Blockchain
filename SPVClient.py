@@ -4,6 +4,7 @@ import json
 import hashlib
 import ecdsa
 
+# This class is not used.
 class SPVClient():
     def __init__(self):
         self.wallet = Wallet()

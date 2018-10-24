@@ -130,7 +130,14 @@ def check_balance(key: str):
     current_balance = miner.get_current_balance()
     return str(current_balance[bytes.fromhex(key)])
 
-
+@app.route('/validate_proof', methods=["POST"])
+def validate_proof() -> str:
+    transaction_json = request.form["transaction"]
+    transaction = Transaction.from_json(transaction_json)
+    proof = miner.verify_transaction(transaction)
+    if(proof):
+        return "1"
+    return ""
 
 
 

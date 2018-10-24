@@ -1,4 +1,3 @@
-from SPVClient import SPVClient
 from wallet import Wallet
 from transaction import Transaction
 from merkletree import verify_proof
@@ -8,7 +7,6 @@ import requests
 import ecdsa
 import sys
 import random
-import json
 
 app = Flask(__name__)
 
@@ -24,6 +22,22 @@ def homepage():
     totalstr += str(headers)
     totalstr += "<br>Wallet key: {}<br>".format(wallet.get_public_key().to_string().hex())
     return (totalstr)
+
+@app.route('/info')
+def infopage():
+    totalstr = ""
+    totalstr += "Wallet key: {}<br>".format(wallet.get_public_key().to_string().hex())
+    if(len(miners) != 0):
+        try:
+            balance = requests.get("http://localhost:{}/check_balance/{}".format(
+                random.choice(miners),
+                wallet.get_public_key().to_string().hex()
+            )).text
+            balance = float(balance)
+            totalstr += "Balance: {}".format(balance)
+        except ValueError: 
+            pass
+    return totalstr
 
 @app.route('/add_miner/<miner_id>')
 def add_miner(miner_id):
@@ -60,12 +74,20 @@ def create_transaction():
     send_transaction(new_transaction.to_json())
     sent_transactions.append(new_transaction.to_json())
     return "Transaction sent: {}".format(new_transaction.to_json())
-    
+
+# Not working   
 @app.route('/request_proof')
 def requestproof():
     if(len(sent_transactions) == 0):
         return "No transactions sent"
     return request_proof(sent_transactions[-1])
+
+# Validates the previous transaction done by this client
+@app.route('/validate_transaction')
+def validateproof():
+    if(len(sent_transactions) == 0):
+        return "No transactions sent"
+    return validate_proof(sent_transactions[-1])
 
 @app.route('/check_balance')
 def check_balance():
@@ -101,6 +123,19 @@ def request_proof(transaction_json: str):
     result = verify_proof(transaction_json.encode(), proof, root )
     return "{}<br>{}".format(proof_str, str(result))
     
+
+# Validates proof from a random miner.    
+def validate_proof(transaction_json: str):
+    if(len(miners) < 1):
+        return "Need miners"
+    url = "http://localhost:{}/validate_proof".format(random.choice(miners))
+    data = {"transaction": transaction_json}
+    proof = requests.post(url,data).text
+    if(proof == "1"):
+        return "True"
+    return "False"
+
+
 
 if __name__ == '__main__':
     port = sys.argv[1]
