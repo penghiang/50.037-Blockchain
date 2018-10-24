@@ -33,7 +33,7 @@ To add SPVClients, we use `/add_client` instead of `/add_miner`.
 
 SPVClients are able to create transactions.
 
-Another example:
+## Another example:
 
 We first start with running an SPVClient and a miner on port 5100 and 5000 respectively.
 
@@ -54,32 +54,46 @@ We mine every other step to lock the transactions into the blockchain.
 
 `localhost:5100/info` allows us to check the wallet's key number of the client. We make use of this to create a transaction.
 
-`localhost:5000/create_transaction?a=999999&r=[SPVClient's key]` We try to send a bad transaction and it will be rejected.
+`localhost:5000/create_transaction?a=999999&r=[SPVClient's key]` 
 
-`localhost:5000/create_transaction?a=10.70&r=[SPVClient's key]` We insert SPVClient's key into this url, 
+We try to send a bad transaction and it will be rejected.
+
+`localhost:5000/create_transaction?a=10.70&r=[SPVClient's key]` 
+
+We insert SPVClient's key into this url, 
 and it will generate a transaction that is automatically added when the miner later mines a block. 
 
 > Create transaction takes the following:
+
 > amount => a
+
 > receiver => r
+
 > comment => c (optional)
+
 > To send a transaction worth 50 to receiver that has a public key of a9d7f7, we do `/create_transaction?a=50&r=a9d7f7`
 
 `localhost:5000/mine`
 
 `localhost:5100/add_miner/5000` 
 
-`localhost:5100/create_transaction?a=1&r=[Miner's key]` Miner's key can be found in miner's `/info`
+`localhost:5100/create_transaction?a=1&r=[Miner's key]` 
+
+Miner's key can be found in miner's `/info`
 This transaction is broadcast to miners that are added through `/add_miner`
 
-`localhost:5100/validate_transaction` This checks the previous transaction if it's in the blockchain. 
+`localhost:5100/validate_transaction` 
+
+This checks the previous transaction if it's in the blockchain. 
 It is false because the miner has not mined yet.
 
 `localhost:5000/mine`
 
 `localhost:5100/validate_transaction`
 
-`localhost:5000/info` We can see that all the balances are updated with the correct transactions.
+`localhost:5000/info` 
+
+We can see that all the balances are updated with the correct transactions.
 
 
 
@@ -100,13 +114,15 @@ It is false because the miner has not mined yet.
 * Halving of reward from coinbase transaction
 #### SPVClients
 * Bloom filters
+* Clients do not receive headers
+* Clients are unable to verify transaction proof with header (bug)
 #### Network
 * **Miners cannot join halfway, need to sync the whole blockchain.**
 * Requesting orphans' parents from miners
 * Request proof not working, bytes not json serializable. Can convert everything into strings instead of bytes.
 * When SPVClients create transactions, they should know if the miners have accepted their transactions.
 #### Others
-* **Attacks**
+* **Attacks (week 5)**
 * Custom exceptions for failed verification/validity/other errors (currently using ValueError and True/False returns)
 * Actual tests and testing classes for rigorous tests
 * UTXO or smart contracts or the likes
@@ -124,3 +140,8 @@ It is false because the miner has not mined yet.
 #### Network
 * SPVClients can check their balance with miners
 * SPVClients are able to check if their transactions are in the blockchain
+
+---
+Differences from BitCoin are mainly covered in the Unimplemented section.
+
+Also, BitCoin uses UTXO transaction model.
